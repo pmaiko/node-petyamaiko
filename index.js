@@ -1,6 +1,6 @@
 require('dotenv').config()
 const PORT = process.env.PORT || 8000
-
+// https://socket.io/docs/v4/emit-cheatsheet/
 const path = require('path')
 const http = require('http')
 
@@ -17,7 +17,29 @@ const io = new Server(server, {
   cors: '*'
 })
 
+
+
+
+
+
+
 let users = []
+const privateMessages = {}
+
+const createHash = (value1, value2) => {
+  if (value1 && value2 && typeof value1 === 'string' && typeof value2 === 'string') {
+    let hash = [value1, value2].sort();
+    return hash.join('')
+  }
+}
+
+privateMessageSend = (from, to) => {
+  const hash = createHash(from, to)
+  io.to([from, to]).emit('private_message:send', {
+    hash,
+    privateMessages: privateMessages[hash]
+  })
+}
 
 const emitUpdateUser = () => {
   io.emit('update:users', users)
@@ -32,26 +54,79 @@ io.on('connection', (socket) => {
     console.log('user disconnect')
     console.log(socket.id)
     users = users.filter(user => user.socketId !== socket.id)
+
+    const removedKeysPrivateMessages = []
+    Object.keys(privateMessages).forEach((key => {
+      if (key.includes(socket.id)) {
+        delete privateMessages[key]
+        removedKeysPrivateMessages.push(key)
+      }
+    }))
+    io.emit('private_message:remove', removedKeysPrivateMessages)
     emitUpdateUser()
   })
 
-  socket.on('add-new:user', ({ name }, callback) => {
+  socket.on('add_new:user', ({ name }, callback) => {
     if (name) {
       users.unshift({
         socketId: socket.id,
         name: name
       })
-      callback(users)
+      callback({
+        status: 'success',
+        data: users
+      })
       emitUpdateUser()
     } else {
-      callback([])
+      callback({
+        status: 'error',
+        message: 'User name error'
+      })
+    }
+  })
+
+  socket.on('private_message:send', ({ to, message }, callback) => {
+    if (to && message) {
+      const from = socket.id
+
+      const hash = createHash(from, to)
+
+      const privateMessage = {
+        from,
+        to,
+        message
+      }
+
+      if (privateMessages[hash]) {
+        privateMessages[hash].push(privateMessage)
+      } else {
+        privateMessages[hash] = [privateMessage]
+      }
+
+      privateMessageSend(from, to)
+      callback({
+        status: 'success',
+        data: {}
+      })
+    } else {
+      callback({
+        status: 'error',
+        message: ''
+      })
     }
   })
 })
 
+
+
+
+
+
+
 setInterval(() => {
-  console.log('users', users)
-}, 30000)
+  // console.log('users', users)
+  console.log('privateMessages', privateMessages)
+}, 10000)
 
 console.log('users', users)
 
