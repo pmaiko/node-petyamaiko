@@ -14,17 +14,18 @@ const server = http.createServer(app)
 
 const { Server } = require("socket.io")
 const io = new Server(server, {
+  extraHeaders: {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+  },
+
   cors: {
     // origin: 'https://front-petyamaiko.vercel.app',
     // origins: 'https://front-petyamaiko.vercel.app'
     origin: "*",
     methods: ["GET", "POST"],
     allowedHeaders: ["Access-Control-Allow-Origin"],
-    credentials: true,
-    exposedHeaders: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-    }
+    credentials: true
   }
 })
 
