@@ -9,7 +9,7 @@ const http = require('http')
 const express = require('express')
 const app = express()
 const cors = require('cors')
-app.use(cors({origin: '*'}))
+app.use(cors({origin: 'https://front-petyamaiko.vercel.app'}))
 const server = http.createServer(app)
 
 const { Server } = require("socket.io")
