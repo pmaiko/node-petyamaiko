@@ -9,7 +9,7 @@ const http = require('http')
 const express = require('express')
 const app = express()
 const cors = require('cors')
-app.use(cors({origin: '*'}))
+app.use(cors({origin: '*', exposedHeaders: {'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'}}))
 const server = http.createServer(app)
 
 const { Server } = require("socket.io")
@@ -22,7 +22,8 @@ const io = new Server(server, {
     allowedHeaders: ["Access-Control-Allow-Origin"],
     credentials: true,
     exposedHeaders: {
-      'Access-Control-Allow-Origin': '*'
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
     }
   }
 })
