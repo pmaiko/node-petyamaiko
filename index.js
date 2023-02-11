@@ -9,7 +9,7 @@ const http = require('http')
 const express = require('express')
 const app = express()
 const cors = require('cors')
-app.use(cors({origin: 'https://front-petyamaiko.vercel.app'}))
+app.use(cors({origin: '*'}))
 const server = http.createServer(app)
 
 const { Server } = require("socket.io")
@@ -17,9 +17,9 @@ const io = new Server(server, {
   cors: {
     // origin: 'https://front-petyamaiko.vercel.app',
     // origins: 'https://front-petyamaiko.vercel.app'
-    origin: "https://front-petyamaiko.vercel.app",
+    origin: "*",
     methods: ["GET", "POST"],
-    allowedHeaders: ["my-custom-header"],
+    allowedHeaders: ["Access-Control-Allow-Origin"],
     credentials: true,
     exposedHeaders: {
       'Access-Control-Allow-Origin': '*'
