@@ -15,7 +15,7 @@ const server = http.createServer(app)
 const { Server } = require("socket.io")
 const io = new Server(server, {
   cors: {
-    origin: "https://front-petyamaiko.vercel.app*",
+    origin: "https://front-petyamaiko.vercel.app/",
     methods: ["GET", "POST"]
   }
   // extraHeaders: {
