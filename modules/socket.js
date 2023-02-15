@@ -32,13 +32,10 @@ module.exports = function (io) {
   emitUsersUpdate()
 
   io.on('connection', (socket) => {
-    console.log('user connected')
-    console.log(socket.id)
-    console.log('--------------------')
+    console.log(`User connected socketId = ${socket.id}`)
 
     socket.on('disconnect', () => {
-      console.log('user disconnect')
-      console.log(socket.id)
+      console.log(`User disconnect socketId = ${socket.id}`)
       users = users.filter(user => user.socketId !== socket.id)
 
       const removedKeysPrivateMessages = []
@@ -82,7 +79,8 @@ module.exports = function (io) {
           from,
           to,
           message,
-          timestamp: new Date().getTime()
+          timestamp: new Date().getTime(),
+          isWatched: false
         }
 
         if (privateMessages[hash]) {
@@ -106,6 +104,21 @@ module.exports = function (io) {
         callback(createResponse({
           status: 'error',
         }))
+      }
+    })
+
+    socket.on('private_message:update', ({ from, to, isWatched }) => {
+      console.log('private_message:update')
+      const hash = createHash(from, to)
+      if (privateMessages[hash]) {
+        privateMessages[hash] = privateMessages[hash].map(item => {
+          item.isWatched = true
+          return item
+        })
+
+        io.to([to]).emit('private_message:update', {
+          hash
+        })
       }
     })
 
