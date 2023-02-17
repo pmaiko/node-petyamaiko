@@ -156,9 +156,9 @@ module.exports = function (io) {
       })
     })
 
-    socket.on('peer', ({ fromPeerId, to }) => {
+    socket.on('peer', ({ peerId, to }) => {
       io.to([to]).emit('peer', {
-        fromPeerId: fromPeerId,
+        peerId: peerId,
         to: to
       })
     })
