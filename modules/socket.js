@@ -2,6 +2,13 @@ module.exports = function (io) {
   let users = []
   const privateMessages = {}
 
+  const callTypes = {
+    CALLING: 'CALLING',
+    SPEAKING: 'SPEAKING',
+    CANSEL: 'CANSEL',
+    COMPLETED: 'COMPLETED'
+  }
+
   const createHash = (value1, value2) => {
     if (value1 && value2 && typeof value1 === 'string' && typeof value2 === 'string') {
       let hash = [value1, value2].sort();
@@ -125,6 +132,34 @@ module.exports = function (io) {
     socket.on('notification:typing', ({ to }) => {
       io.to([to]).emit('notification:typing', {
         from: socket.id
+      })
+    })
+
+    socket.on(callTypes.CALLING, ({from, to}) => {
+      io.to([to]).emit(callTypes.CALLING, {
+        from: from,
+        to: to
+      })
+    })
+
+    socket.on(callTypes.CANSEL, ({from, to}) => {
+      io.to([from, to]).emit(callTypes.CANSEL, {
+        from: from,
+        to: to
+      })
+    })
+
+    socket.on(callTypes.SPEAKING, ({from, to}) => {
+      io.to([from, to]).emit(callTypes.SPEAKING, {
+        from: from,
+        to: to
+      })
+    })
+
+    socket.on('peer', ({ fromPeerId, to }) => {
+      io.to([to]).emit('peer', {
+        fromPeerId: fromPeerId,
+        to: to
       })
     })
   })

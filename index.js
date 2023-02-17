@@ -19,6 +19,16 @@ const io = new Server(server, {
   }
 })
 
+const { ExpressPeerServer } = require('peer')
+const peerServer = ExpressPeerServer(server, {
+  debug: true
+})
+app.use("/peerjs", peerServer)
+
+peerServer.on('connection', (client) => {
+  console.log('peer client.id', client.id)
+})
+
 const ModuleSocket = require('./modules/socket')
 ModuleSocket(io)
 
