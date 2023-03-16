@@ -156,6 +156,13 @@ module.exports = function (io) {
       })
     })
 
+    socket.on(callTypes.COMPLETED, ({from, to}) => {
+      io.to([from, to]).emit(callTypes.COMPLETED, {
+        from: from,
+        to: to
+      })
+    })
+
     socket.on('peer', ({ peerId, to }) => {
       io.to([to]).emit('peer', {
         peerId: peerId,
