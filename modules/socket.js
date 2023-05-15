@@ -1,3 +1,5 @@
+const uuid = require('uuid').v4
+
 module.exports = function (io) {
   let users = []
   const privateMessages = {}
@@ -9,14 +11,14 @@ module.exports = function (io) {
     COMPLETED: 'COMPLETED'
   }
 
-  const createHash = (value1, value2) => {
-    if (value1 && value2 && typeof value1 === 'string' && typeof value2 === 'string') {
-      let hash = [value1, value2].sort();
+  const getConversationId = (sender, recipient) => {
+    if (sender && recipient && typeof sender === 'string' && typeof recipient === 'string') {
+      let hash = [sender, recipient].sort();
       return hash.join('')
     }
   }
 
-  const createResponse = ({status, data, message} = {}) => {
+  const Response = ({status, data, message} = {}) => {
     return {
       status: status || '',
       data: data || {},
@@ -24,22 +26,18 @@ module.exports = function (io) {
     }
   }
 
-  const privateMessageSend = (from, to) => {
-    const hash = createHash(from, to)
-    io.to([from, to]).emit('private_message:send', {
-      hash,
-      privateMessages: privateMessages[hash]
-    })
-  }
-
-  const emitUsersUpdate = () => {
+  const updateUsers = () => {
     io.emit('users:update', users)
   }
 
-  emitUsersUpdate()
+  updateUsers()
 
   io.on('connection', (socket) => {
     console.log(`User connected socketId = ${socket.id}`)
+
+    // setTimeout(() => {
+    //   socket.disconnect()
+    // }, 5000)
 
     socket.on('disconnect', () => {
       console.log(`User disconnect socketId = ${socket.id}`)
@@ -53,88 +51,120 @@ module.exports = function (io) {
         }
       }))
       io.emit('private_message:remove', removedKeysPrivateMessages)
-      emitUsersUpdate()
+      updateUsers()
     })
 
-    socket.on('user:add_new', ({ name }, callback) => {
-      if (name) {
+    socket.on('user:add', ({ userName }, callback) => {
+      if (userName) {
         users.unshift({
           socketId: socket.id,
-          name: name,
+          name: userName,
           timestamp: new Date().getTime()
         })
-        callback(createResponse({
+        callback(Response({
           status: 'success',
           data: users
         }))
-        emitUsersUpdate()
+        updateUsers()
       } else {
-        callback(createResponse({
+        callback(Response({
           status: 'error',
           message: 'User name error'
         }))
       }
     })
 
-    socket.on('private_message:send', ({ to, message }, callback) => {
-      if (to && message) {
-        const from = socket.id
+    socket.on('message:send', (req, cb) => {
+      const id = uuid()
+      const senderId = req.senderId
+      const recipientId = req.recipientId
+      const text = req.text
+      const timestamp = new Date().getTime()
+      const watched = false
 
-        const hash = createHash(from, to)
+      const conversationId = getConversationId(senderId, recipientId)
 
-        const privateMessage = {
-          from,
-          to,
-          message,
-          timestamp: new Date().getTime(),
-          isWatched: false
-        }
+      const message = {
+        id,
+        senderId,
+        recipientId,
+        text,
+        timestamp,
+        watched
+      }
 
-        if (privateMessages[hash]) {
-          privateMessages[hash].push(privateMessage)
-        } else {
-          privateMessages[hash] = [privateMessage]
-        }
-
-        privateMessageSend(from, to)
-
-        const userFrom = users.find(user => user.socketId === from)
-        io.to([to]).emit('notification:send-message', {
-          from: from,
-          name: userFrom ? userFrom.name : '',
-          message: message
-        })
-        callback(createResponse({
-          status: 'success',
-        }))
+      if (privateMessages[conversationId]) {
+        privateMessages[conversationId].push(message)
       } else {
-        callback(createResponse({
-          status: 'error',
-        }))
+        privateMessages[conversationId] = [message]
       }
-    })
 
-    socket.on('private_message:update', ({ from, to, isWatched }) => {
-      console.log('private_message:update')
-      const hash = createHash(from, to)
-      if (privateMessages[hash]) {
-        privateMessages[hash] = privateMessages[hash].map(item => {
-          item.isWatched = true
-          return item
-        })
+      cb(Response({
+        status: 'success'
+      }))
 
-        io.to([to]).emit('private_message:update', {
-          hash
-        })
-      }
-    })
-
-    socket.on('notification:typing', ({ to }) => {
-      io.to([to]).emit('notification:typing', {
-        from: socket.id
+      io.to([senderId, recipientId]).emit('messages:update', {
+        conversationId,
+        messages: privateMessages[conversationId]
       })
     })
 
+    socket.on('messages:watchedIds', (req, cb) => {
+      const senderId = req.senderId
+      const recipientId = req.recipientId
+      const ids = req.ids
+      console.log(ids)
+
+      const conversationId = getConversationId(senderId, recipientId)
+
+      if (privateMessages[conversationId]) {
+        privateMessages[conversationId] = privateMessages[conversationId].map(message => {
+          if (senderId === message.recipientId && ids.includes(message.id)) {
+            message.watched = true
+          }
+
+          return message
+        })
+
+        cb(Response({
+          status: 'success'
+        }))
+
+        io.to([senderId, recipientId]).emit('messages:update', {
+          conversationId,
+          messages: privateMessages[conversationId]
+        })
+      } else {
+        cb(Response({
+          status: 'error'
+        }))
+      }
+    })
+
+
+    //
+    // socket.on('private_message:update', ({ from, to, isWatched }) => {
+    //   console.log('private_message:update')
+    //   const hash = createHash(from, to)
+    //   if (privateMessages[hash]) {
+    //     privateMessages[hash] = privateMessages[hash].map(item => {
+    //       item.isWatched = true
+    //       return item
+    //     })
+    //
+    //     io.to([to]).emit('private_message:update', {
+    //       hash
+    //     })
+    //   }
+    // })
+    //
+    // socket.on('notification:typing', ({ to }) => {
+    //   io.to([to]).emit('notification:typing', {
+    //     from: socket.id
+    //   })
+    // })
+
+    // WebRTC
     socket.on(callTypes.CALLING, ({from, to}) => {
       io.to([to]).emit(callTypes.CALLING, {
         from: from,
@@ -163,8 +193,15 @@ module.exports = function (io) {
       })
     })
 
-    socket.on('peer', ({ peerId, to }) => {
-      io.to([to]).emit('peer', {
+    socket.on('peer:open', ({ peerId, to }) => {
+      io.to([to]).emit('peer:open', {
+        peerId: peerId,
+        to: to
+      })
+    })
+
+    socket.on('peer:disconnected', ({ peerId, to }) => {
+      io.to([to]).emit('peer:disconnected', {
         peerId: peerId,
         to: to
       })
@@ -173,7 +210,7 @@ module.exports = function (io) {
 
   setInterval(() => {
     // console.log('users', users)
-    console.log('privateMessages', privateMessages)
+    // console.log('privateMessages', privateMessages)
   }, 10000)
 
   return {
