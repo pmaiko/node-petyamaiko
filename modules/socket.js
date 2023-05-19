@@ -56,14 +56,15 @@ module.exports = function (io) {
 
     socket.on('user:add', ({ userName }, callback) => {
       if (userName) {
-        users.unshift({
+        const user = {
           socketId: socket.id,
           name: userName,
           timestamp: new Date().getTime()
-        })
+        }
+        users.unshift(user)
         callback(Response({
           status: 'success',
-          data: users
+          data: user
         }))
         updateUsers()
       } else {
@@ -107,12 +108,19 @@ module.exports = function (io) {
         conversationId,
         messages: privateMessages[conversationId]
       })
+
+      io.to([recipientId]).emit('message:notification', {
+        senderId: message.senderId,
+        text: message.text
+      })
     })
 
     socket.on('messages:watchedIds', (req, cb) => {
       const senderId = req.senderId
       const recipientId = req.recipientId
       const ids = req.ids
+      console.log(senderId)
+      console.log(recipientId)
       console.log(ids)
 
       const conversationId = getConversationId(senderId, recipientId)
