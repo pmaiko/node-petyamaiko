@@ -30,8 +30,6 @@ module.exports = function (io) {
     io.emit('users:update', users)
   }
 
-  updateUsers()
-
   io.on('connection', (socket) => {
     console.log(`User connected socketId = ${socket.id}`)
 
@@ -41,7 +39,11 @@ module.exports = function (io) {
 
     socket.on('disconnect', () => {
       console.log(`User disconnect socketId = ${socket.id}`)
+      const user = users.find(user => user.socketId === socket.id)
+      io.emit('user:disconnect', user)
+
       users = users.filter(user => user.socketId !== socket.id)
+      updateUsers()
 
       const removedKeysPrivateMessages = []
       Object.keys(privateMessages).forEach((key => {
@@ -50,8 +52,6 @@ module.exports = function (io) {
           removedKeysPrivateMessages.push(key)
         }
       }))
-      io.emit('private_message:remove', removedKeysPrivateMessages)
-      updateUsers()
     })
 
     socket.on('user:add', ({ userName }, callback) => {
@@ -67,6 +67,8 @@ module.exports = function (io) {
           data: user
         }))
         updateUsers()
+
+        socket.broadcast.emit('user:connect', user)
       } else {
         callback(Response({
           status: 'error',
@@ -109,9 +111,21 @@ module.exports = function (io) {
         messages: privateMessages[conversationId]
       })
 
-      io.to([recipientId]).emit('message:notification', {
-        senderId: message.senderId,
-        text: message.text
+      const sender = users.find(user => user.socketId === message.senderId)
+      if (sender) {
+        io.to([recipientId]).emit('message:alert', {
+          sender,
+          text: message.text
+        })
+      }
+    })
+
+    socket.on('message:typing', (req) => {
+      const senderId = req.senderId
+      const recipientId = req.recipientId
+
+      io.to([recipientId]).emit('message:typing', {
+        senderId
       })
     })
 
@@ -119,9 +133,6 @@ module.exports = function (io) {
       const senderId = req.senderId
       const recipientId = req.recipientId
       const ids = req.ids
-      console.log(senderId)
-      console.log(recipientId)
-      console.log(ids)
 
       const conversationId = getConversationId(senderId, recipientId)
 
@@ -148,29 +159,6 @@ module.exports = function (io) {
         }))
       }
     })
-
-
-    //
-    // socket.on('private_message:update', ({ from, to, isWatched }) => {
-    //   console.log('private_message:update')
-    //   const hash = createHash(from, to)
-    //   if (privateMessages[hash]) {
-    //     privateMessages[hash] = privateMessages[hash].map(item => {
-    //       item.isWatched = true
-    //       return item
-    //     })
-    //
-    //     io.to([to]).emit('private_message:update', {
-    //       hash
-    //     })
-    //   }
-    // })
-    //
-    // socket.on('notification:typing', ({ to }) => {
-    //   io.to([to]).emit('notification:typing', {
-    //     from: socket.id
-    //   })
-    // })
 
     // WebRTC
     socket.on(callTypes.CALLING, ({from, to}) => {
