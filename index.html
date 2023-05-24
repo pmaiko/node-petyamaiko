@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport"
+				content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+	<meta http-equiv="X-UA-Compatible" content="ie=edge">
+	<title>Document</title>
+	<link rel=stylesheet href=https://cdn.jsdelivr.net/npm/pretty-print-json@2.0/dist/css/pretty-print-json.css>
+	<script src=https://cdn.jsdelivr.net/npm/pretty-print-json@2.0/dist/pretty-print-json.min.js></script>
+	<style>
+      body {
+          /*margin: 0.5rem;*/
+          /*padding: 0;*/
+          /*background: black;*/
+          /*color: white;*/
+      }
+	</style>
+</head>
+<body>
+<pre id="id" class="json-container"></pre>
+<script>
+  const formattedDate = (date) => {
+    const pad = (number) => {
+      if (number < 10) return '0' + number
+      return number
+    }
+    const day = pad(date.getDate())
+    const month = pad(date.getMonth() + 1)
+    const year = pad(date.getFullYear())
+    const hour = pad(date.getHours())
+    const minutes = pad(date.getMinutes())
+    const seconds = pad(date.getSeconds())
+    const milliseconds = pad(date.getMilliseconds())
+    return `${day}/${month}/${year} ${hour}:${minutes}:${seconds}:${milliseconds}`
+  }
+
+  let eventSource = new EventSource("/stream")
+
+  const elem = document.getElementById('id');
+
+  eventSource.onmessage = function(event) {
+    elem.insertAdjacentHTML('beforeend', formattedDate(new Date) + '\n')
+    elem.insertAdjacentHTML('beforeend', prettyPrintJson.toHtml(JSON.parse(event.data)) + '\n\n\n')
+
+    var pageHeight = Math.max(
+      document.documentElement.clientHeight,
+      document.documentElement.scrollHeight,
+      document.documentElement.offsetHeight,
+      document.body.clientHeight,
+      document.body.scrollHeight,
+      document.body.offsetHeight
+    );
+
+    window.scrollTo(0, pageHeight)
+  }
+</script>
+</body>
+</html>

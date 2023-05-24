@@ -1,6 +1,7 @@
+const {json} = require('express')
 const uuid = require('uuid').v4
 
-module.exports = function (io) {
+module.exports = function (io, { streamSendMessage, Logger }) {
   let users = []
   const privateMessages = {}
 
@@ -31,14 +32,14 @@ module.exports = function (io) {
   }
 
   io.on('connection', (socket) => {
-    console.log(`User connected socketId = ${socket.id}`)
+    Logger.out(`User connected socketId = ${socket.id}`)
 
     // setTimeout(() => {
     //   socket.disconnect()
     // }, 5000)
 
     socket.on('disconnect', () => {
-      console.log(`User disconnect socketId = ${socket.id}`)
+      Logger.out(`User disconnect socketId = ${socket.id}`)
       const user = users.find(user => user.socketId === socket.id)
       io.emit('user:disconnect', user)
 
@@ -118,6 +119,10 @@ module.exports = function (io) {
           text: message.text
         })
       }
+
+      Logger.out({
+        message: message
+      })
     })
 
     socket.on('message:typing', (req) => {
@@ -205,8 +210,12 @@ module.exports = function (io) {
   })
 
   setInterval(() => {
-    // console.log('users', users)
-    // console.log('privateMessages', privateMessages)
+    Logger.out({
+      users: users
+    })
+    Logger.out({
+      privateMessages: privateMessages
+    })
   }, 10000)
 
   return {
