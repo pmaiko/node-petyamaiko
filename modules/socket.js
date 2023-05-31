@@ -1,9 +1,22 @@
-const {json} = require('express')
 const uuid = require('uuid').v4
 
 module.exports = function (io, { streamSendMessage, Logger }) {
   let users = []
   const privateMessages = {}
+  const generalMessages = {
+    messages: [],
+    add (message) {
+      if (this.messages.length > 15) {
+        this.messages.shift()
+      }
+      this.messages.push(message)
+    },
+
+    get () {
+      const arr = [...this.messages]
+      return arr.reverse()
+    }
+  }
 
   const callTypes = {
     CALLING: 'CALLING',
@@ -163,6 +176,36 @@ module.exports = function (io, { streamSendMessage, Logger }) {
           status: 'error'
         }))
       }
+    })
+
+    socket.on('general-message:send', (req, cb) => {
+      const id = uuid()
+      const senderId = req.senderId
+      const text = req.text
+      const timestamp = new Date().getTime()
+
+      const message = {
+        id,
+        sender: users.find(user => user.socketId === senderId),
+        text,
+        timestamp
+      }
+
+      generalMessages.add(message)
+
+      io.emit('general-messages:update', generalMessages.get())
+
+      cb(Response({
+        status: 'success',
+        data: generalMessages.get()
+      }))
+    })
+
+    socket.on('general-message:get', (req, cb) => {
+      cb(Response({
+        status: 'success',
+        data: generalMessages.get()
+      }))
     })
 
     // WebRTC
