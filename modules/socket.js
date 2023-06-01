@@ -208,6 +208,14 @@ module.exports = function (io, { streamSendMessage, Logger }) {
       }))
     })
 
+    socket.on('create-conference', (req, cb) => {
+      cb(Response({
+        status: 'success',
+        data: uuid()
+      }))
+    })
+
+
     // WebRTC
     socket.on(callTypes.CALLING, ({from, to}) => {
       io.to([to]).emit(callTypes.CALLING, {
@@ -249,6 +257,24 @@ module.exports = function (io, { streamSendMessage, Logger }) {
         peerId: peerId,
         to: to
       })
+    })
+
+    // peer
+    socket.on('join-room', (roomId, pid) => {
+      socket.join(roomId)
+      socket.to(roomId).emit('user-connected', pid)
+
+      socket.on('disconnect', () => {
+        socket.to(roomId).emit('user-disconnected', pid)
+      })
+    })
+
+    socket.on('connected-device', (roomId, pid) => {
+      socket.to(roomId).emit('user-connected-device', pid)
+    })
+
+    socket.on('not-connected-device', (roomId, pid) => {
+      socket.to(roomId).emit('user-not-connected-device', pid)
     })
   })
 
